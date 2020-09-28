@@ -7,9 +7,9 @@ from sklearn.neighbors import NearestNeighbors
 import json
 
 def load_cifar(n, train_size, test_size):
-    DB = np.load("../NNNNDB/cifar_DB_32.npy", allow_pickle=True)
-    queries = np.load("../NNNNDB/cifar_queries_32.npy", allow_pickle=True)
-    test_queries = np.load("../NNNNDB/cifar_test_queries_32.npy", allow_pickle=True)
+    DB = np.load("Data/cifar_DB_32.npy", allow_pickle=True)
+    queries = np.load("Data/cifar_queries_32.npy", allow_pickle=True)
+    test_queries = np.load("Data/cifar_test_queries_32.npy", allow_pickle=True)
     np.random.shuffle(DB)
     np.random.shuffle(queries)
     np.random.shuffle(test_queries)
@@ -19,7 +19,7 @@ def load_cifar(n, train_size, test_size):
     return DB, queries, test_queries, None, None
 
 def load_gist(n, train_size, test_size):
-    DB_all = np.load("/home/users/zeighami/NNDB/Data/gist/DB.npy")
+    DB_all = np.load("Data/gist/DB.npy")
     DB = DB_all[:n, :]
     queries = DB_all[:train_size, :]
     test_queries = DB_all[train_size:train_size+test_size, :]
@@ -60,9 +60,9 @@ def gen_rand_data(max_val, no_comp, n, train_size, test_size, dim):
     return DB, queries, test_queries
 
 def load_synth(test_size, dim, k_th, max_val):
-    DB = np.genfromtxt("/home/users/zeighami/NNDB/Data/synthetic/DB.txt", delimiter='\t')
-    queries = np.genfromtxt("/home/users/zeighami/NNDB/Data/synthetic/train.txt", delimiter='\t')
-    queries_res = np.genfromtxt("/home/users/zeighami/NNDB/Data/synthetic/train_res.txt")
+    DB = np.genfromtxt("Data/synthetic/DB.txt", delimiter='\t')
+    queries = np.genfromtxt("Data/synthetic/train.txt", delimiter='\t')
+    queries_res = np.genfromtxt("Data/synthetic/train_res.txt")
 
     test_queries = (np.random.rand(test_size, dim)-0.5)*max_val
     print(DB.shape)
