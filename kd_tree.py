@@ -76,7 +76,7 @@ def train_model(DB, x, y, test_x, test_y, k_th, return_dist, dim, split_dim, fan
 
     print(x.shape)
     print(test_x.shape)
-    p = subprocess.Popen(["python", "/tank/users/zeighami/NNDB/fit_base.py", str(no), base_name, path])  
+    p = subprocess.Popen(["python", "fit_base.py", str(no), base_name, path])  
     processes.append(p)
 
     return leaf, processes
