@@ -127,7 +127,7 @@ if (config['out_dim']!=1 and one_model_per_outdim) or config['degree']!=1:
 else:
     model.save_params(base_name+path+"00.m")
 
-c_call = "/tank/users/zeighami/NNDB/cpp_model_parallel 1 " + str(config['in_dim'])+" " + str(config['out_dim']) +' 0 ' + 'test'+str(no)+  ' ' + base_name+path + ' ' + str(no) + " " + str(config['degree'])
+c_call = "../../cpp_model_parallel 1 " + str(config['in_dim'])+" " + str(config['out_dim']) +' 0 ' + 'test'+str(no)+  ' ' + base_name+path + ' ' + str(no) + " " + str(config['degree'])
 print(c_call)
 os.system(c_call)
 
