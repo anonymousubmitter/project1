@@ -15,7 +15,8 @@ struct Node
     int dim;
     double* split_points;
     Node** children;
-    NNDegree* nn;
+    //NNDegree* nn;
+    NN* nn;
 };
 
 int fanout = 3;
@@ -38,7 +39,8 @@ void build_kd_tree(Node* root_node, std::ifstream* file, int curr_depth, std::st
 {
     if (fanout == 1 || curr_depth == depth)
     {
-        root_node->nn = new NNDegree(curr_path, degree, out_dim);
+        root_node->nn = new NN(curr_path+"00.m");
+        //root_node->nn = new NNDegree(curr_path, degree, out_dim);
         //root_node->nn = new NNDegree*[out_dim];
         //for (int i = 0; i < out_dim; i++)
         //    root_node->nn[i] = new NNDegree(curr_path+std::to_string(i), degree);
@@ -59,7 +61,7 @@ void build_kd_tree(Node* root_node, std::ifstream* file, int curr_depth, std::st
         {
             int next_del = line.find(',');
             std::string vals = line.substr(0, next_del);
-            std::cout << vals << std::endl;;
+            //std::cout << vals << std::endl;;
             root_node->split_points[i] =  std::stod(vals);
 
             line = line.substr(next_del+1, line.length());
@@ -77,7 +79,8 @@ void build_tree(Node* root_node, std::ifstream* file, int curr_depth, std::strin
 {
     if (fanout == 1 || curr_depth == depth)
     {
-        root_node->nn = new NNDegree(curr_path, degree, out_dim);
+        root_node->nn = new NN(curr_path);
+        //root_node->nn = new NNDegree(curr_path, degree, out_dim);
         //for (int i = 0; i < out_dim; i++)
         //root_node->nn = new NNDegree(curr_path, degree, out_dim);
 
@@ -197,7 +200,7 @@ int main(int argc, char** argv)
     int base = atoi(argv[7]);
     degree = atoi(argv[8]);
 
-    int test_size = 100000;
+    int test_size = 10000;
     double** x = new double*[test_size];
     double** y = new double*[test_size];
     std::ifstream file_queries(query_file+"_queries.txt");
@@ -221,7 +224,9 @@ int main(int argc, char** argv)
             x[i][j] =  std::stod(vals);
 
             line = line.substr(next_del+1, line.length());
+            //std::cout << x[i][j] << " ";
         }
+        //std::cout << std::endl;
         //x[i][0] = std::stod(line.substr(0, line.find(',')).c_str());
         //x[i][1] = std::stod(line.substr(line.find(',')+1, line.length()).c_str());
 
@@ -238,6 +243,7 @@ int main(int argc, char** argv)
         //y[i][0] = std::stod(line.substr(0, line.find(',')).c_str());
         //y[i][1] = std::stod(line.substr(line.find(',')+1, line.length()).c_str());
     }
+    //std::cout << "HJERERER " << test_size << std::endl;
     
 
 
@@ -246,10 +252,10 @@ int main(int argc, char** argv)
     {
 
         std::string line;
-        std::cout << line << std::endl;
+        //std::cout << line << std::endl;
         if (std::getline(infile, line))
             is_kd_tree = line[0] == 'K';
-        std::cout << "kd "<< is_kd_tree << std::endl;
+        //std::cout << "kd "<< is_kd_tree << std::endl;
     }
     else
         is_kd_tree = true;
@@ -299,15 +305,15 @@ int main(int argc, char** argv)
         else
         {
             acc = dist(res, y[i], out_dim)/std::abs(y[i][0]);
-            std::cout << acc << std::endl;
+            //std::cout << acc << std::endl;
             total_dist += std::abs(y[i][0]);
             mse += dist(res, y[i], out_dim);
         }
         if (i < 5)
         //if (acc > 1)
         {
-            for (int z = 0; z < out_dim; z++)
-                std::cout << "dim " << z << " "<< x[i][z] << ","<< res[z] << "," << y[i][z] << "," << acc << std::endl;
+            //for (int z = 0; z < out_dim; z++)
+            //    std::cout << "dim " << z << " "<< x[i][z] << ","<< res[z] << "," << y[i][z] << "," << acc << std::endl;
         }
         if (output_result)
         {

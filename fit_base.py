@@ -1,6 +1,6 @@
 import tensorflow as tf
 import gc
-from utils import swish, sine_func, AccuracyMult, AvgAccuracyMult, MaxAccuracyMult, NN_loss, SMSE, mse, PrintEpochNo
+from utils import swish, sine_func, AccuracyMult, AvgAccuracyMult, MaxAccuracyMult, NN_loss, SMSE, mse, PrintEpochNo, n_mse, MAE, Smooth_RMAE, SaveBestCallBack, Smooth_dist_RMAE_NN, Smooth_RMAE_NN
 from base_model_dim import PhiDim 
 from base_model_degree import PhiDegree
 import json
@@ -22,13 +22,19 @@ no = int(sys.argv[1])
 base_name = sys.argv[2]
 path = sys.argv[3]
 
-db = np.loadtxt('DB.txt', delimiter=',')
+if config["out_dim"] == 1 and config["NN"] == True:
+    if config['data_loc'][0] == "/":
+        db = np.load(config['data_loc'])
+    else:
+        db = np.loadtxt('DB.txt', delimiter=',')
+else:
+    db = None
 #train = np.loadtxt('test'+str(no)+'_queries.txt', delimiter=',')
 #res = np.loadtxt('test'+str(no)+'_res.txt', delimiter=',')
-test = np.loadtxt('test'+str(no)+'_queries.txt', delimiter=',')
-test_res = np.loadtxt('test'+str(no)+'_res.txt', delimiter=',')
-train = np.loadtxt('queries'+str(no)+'.txt', delimiter=',')
-res = np.loadtxt('res'+str(no)+'.txt', delimiter=',')
+test = np.load('test'+str(no)+'_queries.npy')
+test_res = np.load('test'+str(no)+'_res.npy').astype(float)
+train = np.load('queries'+str(no)+'.npy')
+res = np.load('res'+str(no)+'.npy').astype(float)
 tf.print(test.shape, output_stream=sys.stdout)
 tf.print(test_res.shape, output_stream=sys.stdout)
 tf.print(train.shape, output_stream=sys.stdout)
@@ -42,7 +48,21 @@ if config['out_dim'] == 1 or (not one_model_per_outdim):
             model = Phi(config['out_dim'], config['in_dim'], config['filter_width1'], config['filter_width2'], config['phi_no_layers'], sine_func, False, config['degree'], config['batch_normalization'], 1, True, config["LOAD_MODEL"])
         else:
             from base_model import Phi 
-            model = Phi(config['out_dim'], config['in_dim'], config['filter_width1'], config['filter_width2'], config['phi_no_layers'], sine_func, False, config['degree'], config['batch_normalization'])
+            if config["1_act_f"] == "sine":
+                act_f_1 = sine_func
+            else:
+                act_f_1 = swish
+
+            if config["2_act_f"] == "sine":
+                act_f_2 = sine_func
+            elif config["2_act_f"] == "swish":
+                act_f_2 = swish
+            else:
+                act_f_2 = tf.nn.relu
+            if no == -1:
+                model = Phi(config['no_leaves'], config['in_dim'], config['filter_width1'], config['filter_width2'], config['phi_no_layers'], act_f_1, True, config['degree'], config['batch_normalization'], act_f_2)
+            else:
+                model = Phi(config['out_dim'], config['in_dim'], config['filter_width1'], config['filter_width2'], config['phi_no_layers'], act_f_1, False, config['degree'], config['batch_normalization'], act_f_2)
     else:
         model = PhiDegree(config['out_dim'], config['in_dim'], config['filter_width1'], config['filter_width2'], config['phi_no_layers'], sine_func, False, config['degree'], config['batch_normalization'])
 else:
@@ -59,13 +79,31 @@ def schedule(epoch):
     return lr
 
 callbacks = [tf.keras.callbacks.LearningRateScheduler(schedule), PrintEpochNo()]
-if config['out_dim']==1:
-    metrics = [AccuracyMult(config['accuracy_mult_threshold'], name='rel_accuracy'), AvgAccuracyMult(None, None, name='avg_rel_accuracy'), MaxAccuracyMult(name='max_rel_accuracy'), SMSE()]
+#if no != -1:
+    #callbacks.append(SaveBestCallBack(test, test_res, model))
+#    callbacks.append(SaveBestCallBack(train, res, model, str(no)))
+#if no == -2:
+#    callbacks.append(SaveBestCallBack(train, res, model, "train"))
+if no == -1:
+    metrics = [tf.keras.metrics.CategoricalAccuracy()]
 else:
-    metrics = []
+    if not config['NN']:
+        #metrics = [AccuracyMult(config['accuracy_mult_threshold'], name='rel_accuracy'), AvgAccuracyMult(None, None, name='avg_rel_accuracy'), MaxAccuracyMult(name='max_rel_accuracy'), SMSE(), MAE()]
+        metrics = [SMSE(), MAE(), Smooth_RMAE(1e-6)]
+    else:
+        metrics = [Smooth_RMAE_NN(1e-6, test, db), Smooth_dist_RMAE_NN(1e-6, test, train, db)]
+        callbacks.append(SaveBestCallBack(test, test_res, model, "mse"+str(no)))
+        callbacks.append(SaveBestCallBack(test, test_res, model, "rel_acc"+str(no)))
 optimizer = tf.keras.optimizers.Adam(learning_rate=base_lr)
-loss = mse
+if no == -1:
+    loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False)
+else:
+    if config['normalized_loss']:
+        loss = n_mse
+    else:
+        loss = mse
 
+'''
 def generator3():
     queries_t = tf.random.shuffle(train)
     dim = config['in_dim']//2
@@ -91,13 +129,15 @@ def generator3():
         train_curr = []
         label = []
     return
+'''
 
 
 #dataset = tf.data.Dataset.from_generator(generator3, (tf.float32, tf.float32), output_shapes=((None, config['in_dim']), (None, config['out_dim'])))
 
 if config["LOAD_MODEL"] == "-1":
     model.compile(optimizer, loss=loss, metrics=metrics)
-    h = model.fit(train, res, epochs=config['EPOCHS'], batch_size=train.shape[0]//config['batch_size'], callbacks=callbacks, validation_data=(test, test_res), verbose=0)
+    print(test_res)
+    h = model.fit(train, res, epochs=config['EPOCHS'], batch_size=train.shape[0]//config['batch_size'], callbacks=callbacks, validation_data=(test, test_res), validation_steps=1, verbose=0, shuffle=False)
     #h = model.fit(dataset, epochs=config['EPOCHS'], callbacks=callbacks, validation_data=(train, res), validation_steps=1, verbose=0)
     model.summary()
 else:
@@ -127,7 +167,7 @@ if (config['out_dim']!=1 and one_model_per_outdim) or config['degree']!=1:
 else:
     model.save_params(base_name+path+"00.m")
 
-c_call = "/tank/users/zeighami/NNDB/cpp_model_parallel 1 " + str(config['in_dim'])+" " + str(config['out_dim']) +' 0 ' + 'test'+str(no)+  ' ' + base_name+path + ' ' + str(no) + " " + str(config['degree'])
+c_call = "/tank/users/zeighami/project1/cpp_model_parallel 1 " + str(config['in_dim'])+" " + str(config['out_dim']) +' 0 ' + 'test'+str(no)+  ' ' + base_name+path + ' ' + str(no) + " " + str(config['degree'])
 print(c_call)
 os.system(c_call)
 

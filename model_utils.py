@@ -1,4 +1,5 @@
 import tensorflow as tf
+import subprocess
 #import tensorflow.keras as keras
 #from tensorflow.keras import datasets, layers, models
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -108,6 +109,95 @@ def get_model(depth):
 
     return CombineModel(config['in_dim'], config['out_dim'], base_models, config['on_hot_encode'], res, config['entropy'], depth<=config['learnable_depth'])
 
+def learn_index_from_res_val(config, DB, queries, test_queries, res, test_res):
+    no =-2
+    base_name = config['NAME']
+    path = ""
+    np.save('queries'+str(no)+'.npy');
+    np.save('res'+str(no)+'.npy');
+    np.save('test'+str(no)+'_queries.npy');
+    np.save('test'+str(no)+'_res.npy');
+
+    p = subprocess.Popen(["python", "/tank/users/zeighami/project1/fit_base.py", str(no), base_name, path])  
+    processes = []
+    processes.append(p)
+    processes[0].wait()
+
+    qs = np.genfromtxt("test_qstrain.txt")
+    preds = np.genfromtxt("best_predtrain.txt")
+
+    no_leaves = config["no_leaves"]
+    s_indx = np.argsort(preds)
+    s_queries = qs[s_indx]
+    s_res = res[s_indx]
+    q_per_leaf = queries.shape[0]//no_leaves
+    for i in range(no_leaves-1):
+        curr_qs = s_queries[i*q_per_leaf:(i+1)*q_per_leaf]
+        curr_res = s_res[i*q_per_leaf:(i+1)*q_per_leaf]
+        test_x = curr_qs[-1000:]
+        test_y = curr_res[-1000:]
+        x = curr_qs[:-1000]
+        y = curr_res[:-1000]
+
+        no =i 
+        base_name = config['NAME']
+        path = ""
+        np.save('queries'+str(no)+'.npy', x);
+        np.save('res'+str(no)+'.npy', y);
+        np.save('test'+str(no)+'_queries.npy', test_x);
+        np.save('test'+str(no)+'_res.npy', test_y);
+
+        print(x.shape)
+        print(test_x.shape)
+        p = subprocess.Popen(["python", "/tank/users/zeighami/project1/fit_base.py", str(no), base_name, path])  
+        processes = []
+        processes.append(p)
+        processes[0].wait()
+
+
+
+
+
+
+def learn_index_from_res_val_category(config, DB, queries, test_queries, res, test_res):
+    no_leaves = config["no_leaves"]
+    s_indx = np.argsort(res)
+    s_res = res[s_indx]
+    s_queries = queries[s_indx]
+    labels = np.zeros((s_queries.shape[0], 1))
+    test_labels = np.zeros((test_queries.shape[0], 1))
+    q_per_leaf = queries.shape[0]//no_leaves
+    for i in range(no_leaves-1):
+        labels[i*q_per_leaf:(i+1)*q_per_leaf, -1]=i
+    labels[(no_leaves-1)*q_per_leaf:, -1]=no_leaves-1
+
+    labels = np.eye(no_leaves)[labels[:, 0].astype(int)]
+
+    p = np.random.permutation(len(labels))
+    x = s_queries[p][:-10000]
+    y = labels[p][:-10000]
+    test_x = s_queries[p][-10000:]
+    test_y = labels[p][-10000:]
+
+    no =-1 
+    base_name = config['NAME']
+    path = ""
+    np.save('queries'+str(no)+'.npy', x);
+    np.save('res'+str(no)+'.npy', y);
+    np.save('test'+str(no)+'_queries.npy', test_x);
+    np.save('test'+str(no)+'_res.npy', test_y);
+
+    print(x.shape)
+    print(test_x.shape)
+    p = subprocess.Popen(["python", "/tank/users/zeighami/project1/fit_base.py", str(no), base_name, path])  
+    processes = []
+    processes.append(p)
+    processes[0].wait()
+    
+
+
+
+
 def call_tree(config, DB, queries, test_queries, res, test_res):
     processes = []
     min_dims = np.zeros(config['in_dim'])-0.5*config['MAX_VAL']
@@ -120,6 +210,9 @@ def call_tree(config, DB, queries, test_queries, res, test_res):
         in_DB = DB
         in_res = None
         in_test_res = None
+    if in_test_res is not None:
+        in_test_res = in_test_res.reshape((-1, config['out_dim']))
+        in_res = in_res.reshape((-1, config['out_dim']))
 
     my_model, _, processes = build_tree(config['depth'], config['no_filters'], config['in_dim'], queries, in_res, test_queries, in_test_res, processes, config['NAME'], "", 0, in_DB, config['k_th'], 0, config['leaf_no_samples'], min_dims, max_dims, config['NN_dist'], config['no_processes'])
 
