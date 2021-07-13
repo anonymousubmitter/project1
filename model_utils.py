@@ -234,7 +234,7 @@ def save_model_and_test(config, my_model):
         with open(config['NAME']+'_tree.m', 'w') as f:
            f.write(cnt) 
 
-    c_call = "/tank/users/zeighami/NNDB/cpp_model_parallel "+str(config['no_filters'])+" " + str(config['in_dim'])+" " + str(config['out_dim']) +' ' + str(config['depth'])+ ' ' + 'test' + ' ' + config['NAME'] + ' -1' + ' ' + str(config['degree'])
+    c_call = "../../cpp_model_parallel "+str(config['no_filters'])+" " + str(config['in_dim'])+" " + str(config['out_dim']) +' ' + str(config['depth'])+ ' ' + 'test' + ' ' + config['NAME'] + ' -1' + ' ' + str(config['degree'])
     print(c_call)
     os.system(c_call)
 

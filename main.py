@@ -61,7 +61,7 @@ else:
     config['on_hot_encode'] = False
     config['entropy'] = True
     config['leaf_no_samples'] = 100000
-    config['data_loc'] = "/home/users/zeighami/NNDB/Data/dor"
+    config['data_loc'] = ""
     config['MAX_VAL']=10
 
 with open('conf.json', 'w') as f:
